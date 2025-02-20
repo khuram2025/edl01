@@ -1,0 +1,200 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+    .log-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 14px;
+    }
+    .log-table th, .log-table td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+    .log-table th {
+        background-color: #f5f5f5;
+        position: sticky;
+        top: 0;
+    }
+    .log-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .filters {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+    .search-box {
+        padding: 6px;
+        margin-right: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        width: 300px;
+    }
+    .date-select {
+        padding: 6px;
+        margin-right: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .filter-button {
+        padding: 6px 12px;
+        background-color: #417690;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .pagination {
+        margin: 20px 0;
+    }
+    .message-cell {
+        max-width: 500px;
+        overflow-wrap: break-word;
+    }
+    .raw-message, .parsed-fields {
+        display: none;
+        background-color: #f8f9fa;
+        padding: 10px;
+        margin-top: 5px;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+    }
+    .show-raw, .show-parsed {
+        color: #417690;
+        cursor: pointer;
+        text-decoration: underline;
+        margin-right: 10px;
+    }
+    .parser-status {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    .status-parsed {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+    .status-raw {
+        background-color: #f5f5f5;
+        color: #757575;
+    }
+</style>
+<script>
+function toggleRawMessage(id) {
+    var rawMsg = document.getElementById('raw-' + id);
+    if (rawMsg.style.display === 'none') {
+        rawMsg.style.display = 'block';
+    } else {
+        rawMsg.style.display = 'none';
+    }
+}
+
+function toggleParsedFields(id) {
+    var parsedFields = document.getElementById('parsed-' + id);
+    if (parsedFields.style.display === 'none') {
+        parsedFields.style.display = 'block';
+    } else {
+        parsedFields.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="filters">
+    <form method="get">
+        <input type="text" name="q" value="{{ search_query }}" placeholder="Search logs..." class="search-box">
+        <select name="date" class="date-select">
+            <option value="">All dates</option>
+            {% for date in dates %}
+                <option value="{{ date }}" {% if date == selected_date %}selected{% endif %}>{{ date }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="filter-button">Filter</button>
+    </form>
+</div>
+
+<table class="log-table">
+    <thead>
+        <tr>
+            <th>Timestamp</th>
+            <th>Received At</th>
+            <th>Device</th>
+            <th>Device IP</th>
+            <th>Log Source IP</th>
+            <th>Message</th>
+            <th>Parser Status</th>
+            <th>Device ID</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.timestamp }}</td>
+            <td>{{ log.received_at }}</td>
+            <td>{{ log.host }}</td>
+            <td>{{ log.device_ip }}</td>
+            <td>{{ log.log_source_ip }}</td>
+            <td class="message-cell">
+                {{ log.message }}
+                {% if log.raw_message %}
+                    <br>
+                    <span class="show-raw" onclick="toggleRawMessage('{{ forloop.counter }}')">Show/Hide Raw Message</span>
+                    <div id="raw-{{ forloop.counter }}" class="raw-message">{{ log.raw_message }}</div>
+                {% endif %}
+                {% if log.parsed_fields %}
+                    <br>
+                    <span class="show-parsed" onclick="toggleParsedFields('{{ forloop.counter }}')">Show/Hide Parsed Fields</span>
+                    <div id="parsed-{{ forloop.counter }}" class="parsed-fields">
+                        {% for key, value in log.parsed_fields.items %}
+                            <strong>{{ key }}:</strong> {{ value }}<br>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </td>
+            <td>
+                {% if log.parser_template %}
+                    <span class="parser-status status-parsed">Parsed ({{ log.parsed_vendor }})</span>
+                {% else %}
+                    <span class="parser-status status-raw">Raw Only</span>
+                {% endif %}
+            </td>
+            <td>{{ log.device_id }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8">No logs found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if is_paginated %}
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_date %}&date={{ selected_date }}{% endif %}">last &raquo;</a>
+        {% endif %}
+    </span>
+</div>
+{% endif %}
+{% endblock %} 

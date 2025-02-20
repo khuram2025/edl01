@@ -1,0 +1,55 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block content %}
+<div id="content-main">
+    <div class="module">
+        <h2>Syslog Receiver Service Control</h2>
+        <div style="padding: 20px;">
+            <p>Current Status: <strong>{{ service.status_display }}</strong></p>
+            {% if service.pid %}
+            <p>Process ID: {{ service.pid }}</p>
+            {% endif %}
+            {% if service.last_started %}
+            <p>Last Started: {{ service.last_started }}</p>
+            {% endif %}
+            {% if service.last_stopped %}
+            <p>Last Stopped: {{ service.last_stopped }}</p>
+            {% endif %}
+            
+            <form method="post" style="margin-top: 20px;">
+                {% csrf_token %}
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" name="start" class="button" {% if service.is_running %}disabled{% endif %}>
+                        Start Service
+                    </button>
+                    <button type="submit" name="stop" class="button" {% if not service.is_running %}disabled{% endif %}>
+                        Stop Service
+                    </button>
+                    <button type="submit" name="restart" class="button">
+                        Restart Service
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .button {
+        background-color: #79aec8;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+    }
+    .button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+    }
+    .button:hover:not(:disabled) {
+        background-color: #417690;
+    }
+</style>
+{% endblock %} 

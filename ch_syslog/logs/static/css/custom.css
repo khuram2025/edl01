@@ -1,0 +1,145 @@
+/* Sidebar styles */
+.sidebar {
+    height: 100vh;
+    width: 250px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: #143D60;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.sidebar-collapsed {
+    width: 60px;
+}
+
+.sidebar-header {
+    padding: 1rem;
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.sidebar-collapsed .sidebar-header h2 {
+    opacity: 0;
+    width: 0;
+}
+
+.sidebar-menu {
+    padding: 1rem 0;
+}
+
+.sidebar-menu-item {
+    padding: 0.75rem 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.sidebar-menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.sidebar-menu-item.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-left: 4px solid #ffffff;
+}
+
+.sidebar-menu-item i {
+    width: 24px;
+    min-width: 24px;
+    margin-right: 12px;
+    text-align: center;
+}
+
+.sidebar-collapsed .sidebar-menu-item span {
+    opacity: 0;
+    width: 0;
+    margin: 0;
+}
+
+.sidebar-collapsed .sidebar-menu-item {
+    padding: 0.75rem 18px;
+    justify-content: center;
+}
+
+.sidebar-collapsed .sidebar-menu-item i {
+    margin-right: 0;
+}
+
+/* Top bar styles */
+.topbar {
+    height: 64px;
+    background-color: white;
+    border-bottom: 1px solid #e2e8f0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 250px;
+    z-index: 900;
+    transition: all 0.3s ease;
+}
+
+.topbar-collapsed {
+    left: 60px;
+}
+
+/* Main content wrapper */
+.main-content {
+    margin-left: 250px;
+    margin-top: 64px;
+    transition: all 0.3s ease;
+    min-height: calc(100vh - 64px);
+    padding: 1rem;
+}
+
+.main-content-collapsed {
+    margin-left: 60px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+    
+    .topbar {
+        left: 0;
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Utility classes */
+.menu-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.toggle-button {
+    padding: 0.5rem;
+    cursor: pointer;
+    color: #4a5568;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.toggle-button:hover {
+    color: #2d3748;
+}

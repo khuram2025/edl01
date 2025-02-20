@@ -1,0 +1,469 @@
+{% extends "logs/base.html" %}
+{% load static %}
+
+{% block title %}Traffic Logs{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        background-color: #f3f4f6;
+        min-height: 100vh;
+        padding: 1.5rem;
+    }
+
+    .card {
+        background-color: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .table-container {
+        overflow-x: auto;
+        margin-top: 1rem;
+        border-radius: 0.75rem;
+    }
+
+    .filters {
+        background-color: white;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .filter-item {
+        flex: 1;
+    }
+
+    .filter-item input, .filter-item select {
+        transition: all 0.3s ease;
+    }
+
+    .filter-item input:focus, .filter-item select:focus {
+        transform: scale(1.01);
+    }
+
+    .bytes-cell {
+        font-family: 'JetBrains Mono', monospace;
+        text-align: right;
+        background-color: #f9fafb;
+        border-radius: 0.375rem;
+        padding: 0.25rem 0.5rem !important;
+    }
+
+    .status-allowed {
+        color: #059669;
+        font-weight: 600;
+        background-color: #ecfdf5;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        display: inline-block;
+    }
+
+    .status-denied {
+        color: #DC2626;
+        font-weight: 600;
+        background-color: #fef2f2;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        display: inline-block;
+    }
+
+    .status-other {
+        color: #6B7280;
+        font-weight: 600;
+        background-color: #f3f4f6;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        display: inline-block;
+    }
+
+    .table-header {
+        position: sticky;
+        top: 0;
+        background-color: #f9fafb;
+        z-index: 10;
+    }
+
+    .table-row {
+        transition: all 0.2s ease;
+    }
+
+    .table-row:hover {
+        background-color: #f9fafb;
+        transform: scale(1.005);
+    }
+
+    .ip-address {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.875rem;
+        color: #374151;
+    }
+
+    .port-number {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.875rem;
+        color: #6B7280;
+        background-color: #f3f4f6;
+        padding: 0.125rem 0.375rem;
+        border-radius: 0.25rem;
+    }
+
+    .firewall-name {
+        font-weight: 500;
+        color: #1F2937;
+    }
+
+    .timestamp {
+        color: #4B5563;
+        font-size: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    .timestamp-date {
+        font-weight: 500;
+        color: #374151;
+        line-height: 1;
+    }
+
+    .timestamp-time {
+        color: #6B7280;
+        font-family: 'JetBrains Mono', monospace;
+        line-height: 1;
+    }
+
+    .table-row td {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+        line-height: 1.2;
+    }
+
+    .table-header th {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    .pagination-container {
+        background-color: white;
+        border-radius: 0.75rem;
+        margin-top: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-link {
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        transform: translateY(-1px);
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1F2937;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: #6B7280;
+        font-size: 0.875rem;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .animate-pulse {
+        animation: pulse 2s infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="container mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">Traffic Logs</h1>
+            <div class="text-sm text-gray-500">
+                Last updated: {% now "F j, Y H:i:s" %}
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-value">{{ paginator.count }}</div>
+                <div class="stat-label">Total Logs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ actions.count }}</div>
+                <div class="stat-label">Unique Actions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ firewalls.count }}</div>
+                <div class="stat-label">Active Firewalls</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters card">
+            <form method="get" class="space-y-4">
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <label for="source_ip" class="block text-sm font-medium text-gray-700 mb-1">Source IP</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                                </svg>
+                            </div>
+                            <input type="text" name="source_ip" id="source_ip" value="{{ source_ip }}"
+                                   class="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Enter source IP">
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <label for="dest_ip" class="block text-sm font-medium text-gray-700 mb-1">Destination IP</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                                </svg>
+                            </div>
+                            <input type="text" name="dest_ip" id="dest_ip" value="{{ dest_ip }}"
+                                   class="pl-10 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Enter destination IP">
+                        </div>
+                    </div>
+                    <div class="filter-item">
+                        <label for="action" class="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                        <select name="action" id="action"
+                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Actions</option>
+                            {% for action_value in actions %}
+                                <option value="{{ action_value }}" {% if action == action_value %}selected{% endif %}>
+                                    {{ action_value|title }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-item">
+                        <label for="firewall" class="block text-sm font-medium text-gray-700 mb-1">Firewall</label>
+                        <select name="firewall" id="firewall"
+                                class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Firewalls</option>
+                            {% for fw in firewalls %}
+                                <option value="{{ fw }}" {% if firewall == fw %}selected{% endif %}>
+                                    {{ fw }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="reset"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Reset
+                    </button>
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                        </svg>
+                        Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <div class="table-container">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="table-header">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Time
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Source IP
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Destination IP
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Dest Port
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Action
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Bytes (Sent/Recv)
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Firewall
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for log in logs %}
+                        <tr class="table-row">
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <span class="timestamp">
+                                    <span class="timestamp-date">{{ log.date|default:"-" }}</span>
+                                    <span class="timestamp-time">{{ log.time|default:"-" }}</span>
+                                </span>
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <span class="ip-address">{{ log.source_ip|default:"-" }}</span>
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <span class="ip-address">{{ log.destination_ip|default:"-" }}</span>
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <span class="port-number">{{ log.destination_port|default:"-" }}</span>
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <span class="{% if log.action == 'allow' %}status-allowed{% elif log.action == 'deny' %}status-denied{% else %}status-other{% endif %}">
+                                    {{ log.action|default:"-"|title }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <span class="bytes-cell">{{ log.sentbyte|default:"0" }}/{{ log.rcvdbyte|default:"0" }}</span>
+                            </td>
+                            <td class="px-6 py-2 whitespace-nowrap">
+                                <span class="firewall-name">{{ log.firewall_name|default:"-" }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <div class="pagination-container px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing
+                            <span class="font-medium">{{ page_obj.start_index }}</span>
+                            to
+                            <span class="font-medium">{{ page_obj.end_index }}</span>
+                            of
+                            <span class="font-medium">{{ paginator.count }}</span>
+                            results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Previous</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </a>
+                            {% endif %}
+
+                            {% for num in paginator.page_range %}
+                                {% if num == page_obj.number %}
+                                <span class="relative inline-flex items-center px-4 py-2 border border-blue-500 bg-blue-50 text-sm font-medium text-blue-600">
+                                    {{ num }}
+                                </span>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?page={{ num }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    {{ num }}
+                                </a>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.urlencode %}&{{ request.GET.urlencode }}{% endif %}"
+                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                <span class="sr-only">Next</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Add smooth transitions for filter changes
+    document.querySelectorAll('select, input').forEach(element => {
+        element.addEventListener('change', function() {
+            this.classList.add('animate-pulse');
+            setTimeout(() => {
+                this.classList.remove('animate-pulse');
+            }, 1000);
+        });
+    });
+
+    // Reset button handler
+    document.querySelector('button[type="reset"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+        document.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+        document.querySelector('form').submit();
+    });
+</script>
+{% endblock %}
+{% endblock %}

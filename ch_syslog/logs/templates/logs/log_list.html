@@ -1,0 +1,799 @@
+{% extends "logs/base.html" %}
+{% load static %}
+{% load log_filters %}
+
+{% block title %}Parsed Logs List{% endblock %}
+
+{% block extra_css %}
+<style>
+    .message-detail {
+        display: none;
+        background-color: #f9fafb;
+        padding: 1rem;
+        border-top: 1px solid #e5e7eb;
+    }
+    .message-detail.show {
+        display: table-row;
+    }
+    .detail-cell {
+        padding: 1rem;
+        background-color: #f9fafb;
+    }
+    .detail-content {
+        background-color: white;
+        padding: 1.5rem;
+        border-radius: 0.375rem;
+        border: 1px solid #e5e7eb;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .log-field {
+        display: flex;
+        margin-bottom: 0.75rem;
+        border-bottom: 1px solid #f3f4f6;
+        padding-bottom: 0.75rem;
+    }
+
+    .log-field:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .field-label {
+        flex: 0 0 140px;
+        font-weight: 600;
+        color: #374151;
+    }
+
+    .field-value {
+        flex: 1;
+        color: #1f2937;
+    }
+
+    .field-group {
+        margin-bottom: 1.5rem;
+        background-color: #f9fafb;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+
+    .field-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .field-group-title {
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .raw-message {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 0.875rem;
+        background-color: #1f2937;
+        color: #f3f4f6;
+        padding: 1rem;
+        border-radius: 0.375rem;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    .ip-tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.375rem;
+        min-height: 2.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .ip-tag {
+        display: inline-flex;
+        align-items: center;
+        background-color: #e5e7eb;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        color: #374151;
+    }
+
+    .ip-tag button {
+        margin-left: 0.5rem;
+        color: #6b7280;
+        hover:text-gray-900;
+    }
+
+    .hidden-inputs {
+        display: none;
+    }
+
+    .custom-range {
+        display: none;
+    }
+    
+    .custom-range.show {
+        display: block;
+    }
+
+    .datetime-inputs {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+
+    .datetime-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .datetime-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: #4b5563;
+    }
+
+    .datetime-field {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .datetime-field input {
+        flex: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if error_message %}
+<div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+        </div>
+        <div class="ml-3">
+            <p class="text-sm text-yellow-700">
+                {{ error_message }}
+            </p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="flex">
+    <!-- Main content -->
+    <div class="flex-1 px-4 py-8">
+        {% if logs %}
+        <div class="bg-white shadow-sm rounded-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date & Time
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Source IP
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal">
+                                Source<br>Interface
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Destination IP
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-normal">
+                                Destination<br>Interface
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Destination Port
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Action
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Device IP
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Details
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for log in logs %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ log.event_date|default:"-" }} {{ log.event_time|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ log.srcip }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ log.srcintf }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ log.dstip }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ log.dstintf }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ log.dstport }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if log.action == 'accept' %}bg-green-100 text-green-800
+                                    {% elif log.action == 'deny' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ log.action|cut:'"' }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ log.device_ip }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <button onclick="toggleDetails('{{ forloop.counter }}')" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium flex items-center">
+                                    <svg id="icon-{{ forloop.counter }}" class="h-5 w-5 transform transition-transform duration-200" 
+                                         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" 
+                                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" 
+                                              clip-rule="evenodd" />
+                                    </svg>
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+                        <tr id="details-{{ forloop.counter }}" class="message-detail">
+                            <td colspan="10" class="detail-cell">
+                                <div class="detail-content">
+                                    <!-- Basic Information -->
+                                    <div class="field-group">
+                                        <div class="field-group-title">Basic Information</div>
+                                        <div class="log-field">
+                                            <div class="field-label">Event Time:</div>
+                                            <div class="field-value">{{ log.event_date }} {{ log.event_time }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Device IP:</div>
+                                            <div class="field-value">{{ log.device_ip }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Action:</div>
+                                            <div class="field-value">
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                                                    {% if log.action == 'accept' %}bg-green-100 text-green-800
+                                                    {% elif log.action == 'deny' %}bg-red-100 text-red-800
+                                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                                    {{ log.action|cut:'"'|upper }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Network Information -->
+                                    <div class="field-group">
+                                        <div class="field-group-title">Network Information</div>
+                                        <div class="log-field">
+                                            <div class="field-label">Source:</div>
+                                            <div class="field-value">
+                                                <strong>IP:</strong> {{ log.srcip }}<br>
+                                                <strong>Interface:</strong> {{ log.srcintf }}
+                                            </div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Destination:</div>
+                                            <div class="field-value">
+                                                <strong>IP:</strong> {{ log.dstip }}<br>
+                                                <strong>Interface:</strong> {{ log.dstintf }}<br>
+                                                <strong>Port:</strong> {{ log.dstport }}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Raw Message -->
+                                    <div class="field-group">
+                                        <div class="field-group-title">Raw Message</div>
+                                        <div class="raw-message">{{ log.message }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if paginator.num_pages > 1 %}
+            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 mt-4 rounded-lg">
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Showing <span class="font-medium">{{ page_obj.start_index }}</span> to
+                            <span class="font-medium">{{ page_obj.end_index }}</span> of
+                            <span class="font-medium">{{ total_count }}</span> results
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                            {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" 
+                               class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0">
+                                <span class="sr-only">Previous</span>
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </a>
+                            {% endif %}
+
+                            {% with page_obj.number|add:"-2" as start %}
+                            {% with page_obj.number|add:"2" as end %}
+                            
+                            {% if start > 1 %}
+                            <a href="?page=1&{{ request.GET.urlencode }}" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                1
+                            </a>
+                            {% if start > 2 %}
+                            <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">...</span>
+                            {% endif %}
+                            {% endif %}
+
+                            {% for i in paginator.num_pages|get_range:paginator.num_pages %}
+                                {% if i >= start and i <= end %}
+                                    {% if page_obj.number == i %}
+                                    <span class="relative z-10 inline-flex items-center bg-blue-600 px-4 py-2 text-sm font-semibold text-white focus:outline-offset-0">
+                                        {{ i }}
+                                    </span>
+                                    {% else %}
+                                    <a href="?page={{ i }}&{{ request.GET.urlencode }}" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                        {{ i }}
+                                    </a>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if end < paginator.num_pages %}
+                            {% if end < paginator.num_pages|add:"-1" %}
+                            <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">...</span>
+                            {% endif %}
+                            <a href="?page={{ paginator.num_pages }}&{{ request.GET.urlencode }}" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                                {{ paginator.num_pages }}
+                            </a>
+                            {% endif %}
+
+                            {% endwith %}
+                            {% endwith %}
+
+                            {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" 
+                               class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0">
+                                <span class="sr-only">Next</span>
+                                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </nav>
+                    </div>
+                </div>
+                <!-- Mobile pagination -->
+                <div class="flex sm:hidden justify-between">
+                    {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" 
+                       class="relative inline-flex items-center rounded-l-md px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                        Previous
+                    </a>
+                    {% endif %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700">
+                        Page {{ page_obj.number }} of {{ paginator.num_pages }}
+                    </span>
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}" 
+                       class="relative inline-flex items-center rounded-r-md px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
+                        Next
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No logs available</h3>
+            <p class="mt-1 text-sm text-gray-500">
+                {% if error_message %}
+                    {{ error_message }}
+                {% else %}
+                    There was an issue connecting to the log server or no logs match your current filters.
+                {% endif %}
+            </p>
+            <div class="mt-6">
+                <a href="?" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    Clear Filters
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Filter sidebar -->
+    <div class="w-64 px-4 py-8">
+        <div class="bg-white shadow-sm rounded-lg p-4">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+            <form method="get" class="space-y-4" id="filterForm">
+                <div>
+                    <label for="source_ip_input" class="block text-sm font-medium text-gray-700">Source IP</label>
+                    <input type="text" id="source_ip_input"
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                           placeholder="Enter source IP and press Enter">
+                    <div id="source_ip_tags" class="ip-tags-container">
+                        {% for ip in source_ips %}
+                        <span class="ip-tag">
+                            {{ ip }}
+                            <button type="button" onclick="removeIP('source', '{{ ip }}')">&times;</button>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    <div class="hidden-inputs" id="source_ip_inputs">
+                        {% for ip in source_ips %}
+                        <input type="hidden" name="source_ip" value="{{ ip }}">
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="dest_ip_input" class="block text-sm font-medium text-gray-700">Destination IP</label>
+                    <input type="text" id="dest_ip_input"
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                           placeholder="Enter destination IP and press Enter">
+                    <div id="dest_ip_tags" class="ip-tags-container">
+                        {% for ip in dest_ips %}
+                        <span class="ip-tag">
+                            {{ ip }}
+                            <button type="button" onclick="removeIP('dest', '{{ ip }}')">&times;</button>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    <div class="hidden-inputs" id="dest_ip_inputs">
+                        {% for ip in dest_ips %}
+                        <input type="hidden" name="dest_ip" value="{{ ip }}">
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <label for="dest_port" class="block text-sm font-medium text-gray-700">Destination Port</label>
+                    <input type="text" id="dest_port" name="dest_port" value="{{ dest_port }}"
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                           placeholder="Enter port number">
+                </div>
+
+                <div>
+                    <label for="action" class="block text-sm font-medium text-gray-700">Action</label>
+                    <select id="action" name="action" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <option value="">All</option>
+                        <option value="accept" {% if action == 'accept' %}selected{% endif %}>Accept</option>
+                        <option value="deny" {% if action == 'deny' %}selected{% endif %}>Deny</option>
+                        <option value="close" {% if action == 'close' %}selected{% endif %}>Close</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="date_range" class="block text-sm font-medium text-gray-700">Time Range</label>
+                    <select id="date_range" name="date_range" onchange="toggleCustomRange(this.value)" 
+                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                        <option value="">All Time</option>
+                        <option value="today" {% if date_range == 'today' %}selected{% endif %}>Today</option>
+                        <option value="yesterday" {% if date_range == 'yesterday' %}selected{% endif %}>Yesterday</option>
+                        <option value="last_7_days" {% if date_range == 'last_7_days' %}selected{% endif %}>Last 7 Days</option>
+                        <option value="last_30_days" {% if date_range == 'last_30_days' %}selected{% endif %}>Last 30 Days</option>
+                        <option value="custom" {% if date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                    </select>
+                    
+                    <div id="customRange" class="custom-range {% if date_range == 'custom' %}show{% endif %}">
+                        <div class="datetime-inputs">
+                            <div class="datetime-group">
+                                <span class="datetime-label">From:</span>
+                                <div class="datetime-field">
+                                    <input type="date" id="from_date" name="from_date" value="{{ from_date }}"
+                                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                           max="{{ today_date }}">
+                                    <input type="time" id="from_time" name="from_time" value="{{ from_time }}"
+                                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                </div>
+                            </div>
+                            <div class="datetime-group">
+                                <span class="datetime-label">To:</span>
+                                <div class="datetime-field">
+                                    <input type="date" id="to_date" name="to_date" value="{{ to_date }}"
+                                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                           max="{{ today_date }}">
+                                    <input type="time" id="to_time" name="to_time" value="{{ to_time }}"
+                                           class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex items-center justify-between space-x-2">
+                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Apply Filters
+                    </button>
+                    <a href="?" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDetails(id) {
+    const detailsRow = document.getElementById(`details-${id}`);
+    const icon = document.getElementById(`icon-${id}`);
+    
+    detailsRow.classList.toggle('show');
+    icon.style.transform = detailsRow.classList.contains('show') ? 'rotate(180deg)' : '';
+}
+
+function isValidIpOrCidr(ipOrCidr) {
+    // Regular expression for IP address
+    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    // Regular expression for CIDR notation
+    const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+    
+    if (!ipRegex.test(ipOrCidr) && !cidrRegex.test(ipOrCidr)) {
+        return false;
+    }
+    
+    // Validate IP parts
+    const parts = ipOrCidr.split('/')[0].split('.');
+    if (!parts.every(part => parseInt(part) >= 0 && parseInt(part) <= 255)) {
+        return false;
+    }
+    
+    // If CIDR, validate subnet mask
+    if (ipOrCidr.includes('/')) {
+        const mask = parseInt(ipOrCidr.split('/')[1]);
+        if (mask < 0 || mask > 32) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+function addIP(type, ipOrCidr) {
+    if (!ipOrCidr) return;
+    
+    // Validate IP or CIDR format
+    if (!isValidIpOrCidr(ipOrCidr)) {
+        alert('Please enter a valid IP address (e.g., 192.168.1.1) or CIDR notation (e.g., 192.168.1.0/24)');
+        return;
+    }
+    
+    const tagsContainer = document.getElementById(`${type}_ip_tags`);
+    const inputsContainer = document.getElementById(`${type}_ip_inputs`);
+    
+    // Check if IP/CIDR already exists
+    const existingInputs = inputsContainer.getElementsByTagName('input');
+    for (let input of existingInputs) {
+        if (input.value === ipOrCidr) {
+            alert('This IP/subnet is already added');
+            return;
+        }
+    }
+    
+    // Create tag element
+    const tag = document.createElement('span');
+    tag.className = 'ip-tag';
+    tag.innerHTML = `
+        ${ipOrCidr}
+        <button type="button" onclick="removeIP('${type}', '${ipOrCidr}')">&times;</button>
+    `;
+    
+    // Create hidden input
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = `${type}_ip`;
+    input.value = ipOrCidr;
+    
+    // Add elements to containers
+    tagsContainer.appendChild(tag);
+    inputsContainer.appendChild(input);
+    
+    // Clear input field
+    document.getElementById(`${type}_ip_input`).value = '';
+}
+
+function removeIP(type, ipOrCidr) {
+    const tagsContainer = document.getElementById(`${type}_ip_tags`);
+    const inputsContainer = document.getElementById(`${type}_ip_inputs`);
+    
+    // Remove tag
+    const tags = tagsContainer.getElementsByClassName('ip-tag');
+    for (let tag of tags) {
+        if (tag.textContent.trim() === ipOrCidr) {
+            tag.remove();
+            break;
+        }
+    }
+    
+    // Remove hidden input
+    const inputs = inputsContainer.getElementsByTagName('input');
+    for (let input of inputs) {
+        if (input.value === ipOrCidr) {
+            input.remove();
+            break;
+        }
+    }
+}
+
+// Add event listeners for IP inputs
+document.addEventListener('DOMContentLoaded', function() {
+    const sourceIpInput = document.getElementById('source_ip_input');
+    const destIpInput = document.getElementById('dest_ip_input');
+    
+    sourceIpInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addIP('source', this.value.trim());
+        }
+    });
+    
+    destIpInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addIP('dest', this.value.trim());
+        }
+    });
+});
+
+function getUrlWithFilters(page) {
+    const params = new URLSearchParams();
+    
+    // Add page parameter
+    if (page) {
+        params.append('page', page);
+    }
+    
+    // Add all source IPs
+    document.querySelectorAll('#source_ip_inputs input').forEach(input => {
+        params.append('source_ip', input.value);
+    });
+    
+    // Add all destination IPs
+    document.querySelectorAll('#dest_ip_inputs input').forEach(input => {
+        params.append('dest_ip', input.value);
+    });
+    
+    // Add other filters
+    const destPort = document.getElementById('dest_port').value;
+    const action = document.getElementById('action').value;
+    const dateRange = document.getElementById('date_range').value;
+    
+    if (destPort) params.append('dest_port', destPort);
+    if (action) params.append('action', action);
+    if (dateRange) {
+        params.append('date_range', dateRange);
+        
+        if (dateRange === 'custom') {
+            const fromDate = document.getElementById('from_date').value;
+            const fromTime = document.getElementById('from_time').value;
+            const toDate = document.getElementById('to_date').value;
+            const toTime = document.getElementById('to_time').value;
+            
+            if (fromDate) params.append('from_date', fromDate);
+            if (fromTime) params.append('from_time', fromTime);
+            if (toDate) params.append('to_date', toDate);
+            if (toTime) params.append('to_time', toTime);
+        }
+    }
+    
+    return '?' + params.toString();
+}
+
+// Update pagination links
+document.addEventListener('DOMContentLoaded', function() {
+    // Update all pagination links to include current filters
+    document.querySelectorAll('a[href^="?page="]').forEach(link => {
+        const page = new URLSearchParams(link.getAttribute('href')).get('page');
+        link.setAttribute('href', getUrlWithFilters(page));
+    });
+});
+
+function toggleCustomRange(value) {
+    const customRange = document.getElementById('customRange');
+    customRange.classList.toggle('show', value === 'custom');
+    
+    if (value === 'custom') {
+        // Set default values if empty
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const currentTime = now.toTimeString().split(' ')[0].substr(0,5);
+        
+        const toDate = document.getElementById('to_date');
+        const toTime = document.getElementById('to_time');
+        const fromDate = document.getElementById('from_date');
+        const fromTime = document.getElementById('from_time');
+        
+        if (!toDate.value) {
+            toDate.value = today;
+            toTime.value = currentTime;
+        }
+        
+        if (!fromDate.value) {
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            fromDate.value = yesterday.toISOString().split('T')[0];
+            fromTime.value = currentTime;
+        }
+        
+        // Validate the range immediately
+        const event = new Event('change');
+        toDate.dispatchEvent(event);
+    }
+}
+
+// Add date-time validation
+document.addEventListener('DOMContentLoaded', function() {
+    const fromDate = document.getElementById('from_date');
+    const fromTime = document.getElementById('from_time');
+    const toDate = document.getElementById('to_date');
+    const toTime = document.getElementById('to_time');
+
+    // Set max date to today for date inputs
+    const today = new Date().toISOString().split('T')[0];
+    fromDate.max = today;
+    toDate.max = today;
+
+    function validateDateRange() {
+        const from = new Date(fromDate.value + 'T' + (fromTime.value || '00:00'));
+        const to = new Date(toDate.value + 'T' + (toTime.value || '23:59'));
+        const now = new Date();
+        
+        // Prevent future dates
+        if (from > now) {
+            fromDate.value = today;
+            fromTime.value = now.toTimeString().slice(0, 5);
+        }
+        
+        if (to > now) {
+            toDate.value = today;
+            toTime.value = now.toTimeString().slice(0, 5);
+        }
+        
+        // Ensure "to" date is not before "from" date
+        if (from > to) {
+            toDate.value = fromDate.value;
+            toTime.value = fromTime.value;
+        }
+    }
+
+    fromDate.addEventListener('change', validateDateRange);
+    fromTime.addEventListener('change', validateDateRange);
+    toDate.addEventListener('change', validateDateRange);
+    toTime.addEventListener('change', validateDateRange);
+
+    // Initialize custom range if selected
+    if (document.getElementById('date_range').value === 'custom') {
+        toggleCustomRange('custom');
+    }
+});
+</script>
+{% endblock %}
