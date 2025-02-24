@@ -1,4 +1,5 @@
 from django import template
+from django.utils.safestring import mark_safe
 from datetime import datetime
 import re
 
@@ -46,6 +47,20 @@ def format_datetime(timestamp):
         return dt.strftime("%Y-%m-%d %H:%M:%S")
     except (ValueError, AttributeError):
         return timestamp or ''
+
+@register.filter
+def format_datetime_log(log):
+    """Format the date and time from a log entry"""
+    if hasattr(log, 'date') and hasattr(log, 'time'):
+        date = log.date if log.date else ''
+        time = log.time if log.time else ''
+        if date and time:
+            return f"{date} {time}"
+        elif date:
+            return date
+        elif time:
+            return time
+    return "-"
 
 @register.filter
 def protocol_name(proto_number):

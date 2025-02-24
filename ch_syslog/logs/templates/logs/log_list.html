@@ -201,7 +201,7 @@
                                 Action
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Device IP
+                                Firewall
                             </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Details
@@ -212,45 +212,31 @@
                         {% for log in logs %}
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ log.event_date|default:"-" }} {{ log.event_time|default:"-" }}
+                                {{ log.formatted_date|default:"-" }} {{ log.formatted_time|default:"-" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ log.srcip }}
+                                {{ log.source_ip|default:"-" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ log.srcintf }}
+                                {{ log.interface_in|default:"-" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ log.dstip }}
+                                {{ log.destination_ip|default:"-" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ log.dstintf }}
+                                {{ log.interface_out|default:"-" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ log.dstport }}
+                                {{ log.destination_port|default:"-" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                    {% if log.action == 'accept' %}bg-green-100 text-green-800
-                                    {% elif log.action == 'deny' %}bg-red-100 text-red-800
-                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                    {{ log.action|cut:'"' }}
-                                </span>
+                                {{ log.action|default:"-" }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ log.device_ip }}
+                                {{ log.firewall_name|default:"-" }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button onclick="toggleDetails('{{ forloop.counter }}')" 
-                                        class="text-blue-600 hover:text-blue-800 font-medium flex items-center">
-                                    <svg id="icon-{{ forloop.counter }}" class="h-5 w-5 transform transition-transform duration-200" 
-                                         xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" 
-                                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" 
-                                              clip-rule="evenodd" />
-                                    </svg>
-                                    Details
-                                </button>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button onclick="toggleDetails('{{ forloop.counter }}')" class="text-blue-600 hover:text-blue-900">Details</button>
                             </td>
                         </tr>
                         <tr id="details-{{ forloop.counter }}" class="message-detail">
@@ -258,52 +244,121 @@
                                 <div class="detail-content">
                                     <!-- Basic Information -->
                                     <div class="field-group">
-                                        <div class="field-group-title">Basic Information</div>
+                                        <h4 class="field-group-title">Basic Information</h4>
                                         <div class="log-field">
-                                            <div class="field-label">Event Time:</div>
-                                            <div class="field-value">{{ log.event_date }} {{ log.event_time }}</div>
+                                            <div class="field-label">Timestamp:</div>
+                                            <div class="field-value">{{ log.date }} {{ log.time }}</div>
                                         </div>
                                         <div class="log-field">
-                                            <div class="field-label">Device IP:</div>
-                                            <div class="field-value">{{ log.device_ip }}</div>
+                                            <div class="field-label">Firewall:</div>
+                                            <div class="field-value">{{ log.firewall_name|default:"-" }}</div>
                                         </div>
                                         <div class="log-field">
                                             <div class="field-label">Action:</div>
-                                            <div class="field-value">
-                                                <span class="px-2 py-1 text-xs font-semibold rounded-full 
-                                                    {% if log.action == 'accept' %}bg-green-100 text-green-800
-                                                    {% elif log.action == 'deny' %}bg-red-100 text-red-800
-                                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                                    {{ log.action|cut:'"'|upper }}
-                                                </span>
-                                            </div>
+                                            <div class="field-value">{{ log.action|default:"-" }}</div>
                                         </div>
                                     </div>
 
-                                    <!-- Network Information -->
+                                    <!-- Source Information -->
                                     <div class="field-group">
-                                        <div class="field-group-title">Network Information</div>
+                                        <h4 class="field-group-title">Source Information</h4>
                                         <div class="log-field">
-                                            <div class="field-label">Source:</div>
-                                            <div class="field-value">
-                                                <strong>IP:</strong> {{ log.srcip }}<br>
-                                                <strong>Interface:</strong> {{ log.srcintf }}
-                                            </div>
+                                            <div class="field-label">IP:</div>
+                                            <div class="field-value">{{ log.source_ip|default:"-" }}</div>
                                         </div>
                                         <div class="log-field">
-                                            <div class="field-label">Destination:</div>
-                                            <div class="field-value">
-                                                <strong>IP:</strong> {{ log.dstip }}<br>
-                                                <strong>Interface:</strong> {{ log.dstintf }}<br>
-                                                <strong>Port:</strong> {{ log.dstport }}
-                                            </div>
+                                            <div class="field-label">Port:</div>
+                                            <div class="field-value">{{ log.source_port|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Interface:</div>
+                                            <div class="field-value">{{ log.interface_in|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Country:</div>
+                                            <div class="field-value">{{ log.country_source|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Zone:</div>
+                                            <div class="field-value">{{ log.src_zone|default:"-" }}</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Destination Information -->
+                                    <div class="field-group">
+                                        <h4 class="field-group-title">Destination Information</h4>
+                                        <div class="log-field">
+                                            <div class="field-label">IP:</div>
+                                            <div class="field-value">{{ log.destination_ip|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Port:</div>
+                                            <div class="field-value">{{ log.destination_port|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Interface:</div>
+                                            <div class="field-value">{{ log.interface_out|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Country:</div>
+                                            <div class="field-value">{{ log.country_destination|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Zone:</div>
+                                            <div class="field-value">{{ log.dst_zone|default:"-" }}</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Additional Information -->
+                                    <div class="field-group">
+                                        <h4 class="field-group-title">Additional Information</h4>
+                                        <div class="log-field">
+                                            <div class="field-label">Protocol:</div>
+                                            <div class="field-value">{{ log.protocol|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Application:</div>
+                                            <div class="field-value">{{ log.application|default:"-" }} ({{ log.app_category|default:"-" }})</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Policy ID:</div>
+                                            <div class="field-value">{{ log.rule_name|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Session ID:</div>
+                                            <div class="field-value">{{ log.session_id|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Duration:</div>
+                                            <div class="field-value">{{ log.duration|default:"-" }}</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Traffic Information -->
+                                    <div class="field-group">
+                                        <h4 class="field-group-title">Traffic Information</h4>
+                                        <div class="log-field">
+                                            <div class="field-label">Bytes Sent:</div>
+                                            <div class="field-value">{{ log.bytes_sent|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Bytes Received:</div>
+                                            <div class="field-value">{{ log.bytes_received|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Packets Sent:</div>
+                                            <div class="field-value">{{ log.packets_sent|default:"-" }}</div>
+                                        </div>
+                                        <div class="log-field">
+                                            <div class="field-label">Packets Received:</div>
+                                            <div class="field-value">{{ log.packets_received|default:"-" }}</div>
                                         </div>
                                     </div>
 
                                     <!-- Raw Message -->
                                     <div class="field-group">
-                                        <div class="field-group-title">Raw Message</div>
-                                        <div class="raw-message">{{ log.message }}</div>
+                                        <h4 class="field-group-title">Raw Message</h4>
+                                        <div class="raw-message">{{ log.misc_field1|default:"-" }}</div>
                                     </div>
                                 </div>
                             </td>
@@ -326,7 +381,7 @@
                         <nav class="relative z-0 inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                             {% if page_obj.has_previous %}
                             <a href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}" 
-                               class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0">
+                               class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 <span class="sr-only">Previous</span>
                                 <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                     <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
